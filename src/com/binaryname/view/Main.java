@@ -1,15 +1,19 @@
 package com.binaryname.view;
 
+import java.util.Optional;
+
 import com.binaryname.controller.ConversionController;
 
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Pos;
+import javafx.print.Printer;
 import javafx.print.PrinterJob;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.HBox;
@@ -75,7 +79,7 @@ public class Main extends Application {
 			@Override
 			public void handle(ActionEvent event) {
 				// Start printing 
-				print(vBox);
+				printSetup(vBox, primaryStage);
 			}
 		});
 		
@@ -92,7 +96,53 @@ public class Main extends Application {
 		launch(args);
 	}
 	
-	private void print(Node node) 
+	/*private void printwithDialog(Node node) {
+		ChoiceDialog dialog = new ChoiceDialog(Printer.getDefaultPrinter(), Printer.getAllPrinters());
+		dialog.setHeaderText("Choose the printer!");
+		dialog.setContentText("Choose a printer from available printers");
+		dialog.setTitle("Printer Choice");
+		Optional<Printer> opt = dialog.showAndWait();
+		if (opt.isPresent()) {
+		    Printer printer = opt.get();
+		    // start printing ...
+		    
+		}
+	}*/
+	
+	private void printSetup(Node node, Stage owner) 
+	{
+		// Create the PrinterJob		
+		PrinterJob job = PrinterJob.createPrinterJob();
+	
+		if (job == null) 
+		{
+			return;
+		}
+
+		// Show the print setup dialog
+		boolean proceed = job.showPrintDialog(owner);
+		
+		if (proceed) 
+		{
+			print(job, node);
+		}
+	}
+	
+	private void print(PrinterJob job, Node node) 
+	{
+		// Set the Job Status Message
+//		jobStatus.textProperty().bind(job.jobStatusProperty().asString());
+		
+		// Print the node
+		boolean printed = job.printPage(node);
+	
+		if (printed) 
+		{
+			job.endJob();
+		}
+	}
+	
+	/*private void print(Node node) 
 	{
 		// Define the Job Status Message
 //		jobStatus.textProperty().unbind();
@@ -126,6 +176,6 @@ public class Main extends Application {
 			// Write Error Message
 			System.out.println("Could not create a printer job.");
 		}
-	}	
+	}	*/
 
 }
