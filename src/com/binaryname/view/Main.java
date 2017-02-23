@@ -94,18 +94,11 @@ public class Main extends Application {
 	
 	private void print(Node node) 
 	{
-		// Define the Job Status Message
-//		jobStatus.textProperty().unbind();
-//		jobStatus.setText("Creating a printer job...");
-		
 		// Create a printer job for the default printer
 		PrinterJob job = PrinterJob.createPrinterJob();
 		
 		if (job != null) 
-		{
-			// Show the printer job status
-//			jobStatus.textProperty().bind(job.jobStatusProperty().asString());
-			
+		{			
 			// Print the node
 			boolean printed = job.printPage(node);
 
@@ -117,7 +110,6 @@ public class Main extends Application {
 			else 
 			{
 				// Write Error Message
-//				jobStatus.textProperty().unbind();
 				System.out.println("Printing failed.");
 			}
 		} 
