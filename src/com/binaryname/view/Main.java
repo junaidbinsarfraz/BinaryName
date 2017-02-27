@@ -3,26 +3,38 @@ package com.binaryname.view;
 import java.util.Iterator;
 
 import com.binaryname.controller.ConversionController;
-import com.sun.javafx.tk.Toolkit;
+import com.sun.javafx.print.PrintHelper;
+import com.sun.javafx.print.Units;
+import com.sun.javafx.scene.control.skin.FXVK;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Bounds;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
+import javafx.print.PageLayout;
+import javafx.print.PageOrientation;
+import javafx.print.Paper;
+import javafx.print.Printer;
 import javafx.print.PrinterJob;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Path;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
+import javafx.scene.transform.Scale;
 import javafx.stage.PopupWindow;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -49,31 +61,30 @@ public class Main extends Application {
 		helloLbl.setFont(Font.font("Comic Sans MS", FontWeight.BOLD, 68));
 		helloLbl.setStyle("-fx-background-color: red;padding: 20px;");
 		helloLbl.setTextFill(Color.web("#ffffff"));
-
+		
 		Label myNameLbl = new Label("my name is");
 		myNameLbl.setAlignment(Pos.CENTER);
 		myNameLbl.setFont(Font.font("Comic Sans MS", 48));
 		myNameLbl.setStyle("-fx-background-color: red;padding: 20px;");
 		myNameLbl.setTextFill(Color.web("#ffffff"));
-
+		
 		TextArea nameTxtArea = new TextArea();
 		nameTxtArea.setWrapText(Boolean.TRUE);
 		nameTxtArea.getStyleClass().add("center-text-area");
 		nameTxtArea.setFont(Font.font("Comic Sans MS", 28));
 		nameTxtArea.setStyle("padding: 20px;");
-
+		
 		Button printBtn = new Button("PRINT");
-		printBtn.setFont(Font.font("Arial Rounded MT Bold", 30));
-		printBtn.setStyle("-fx-background-color: #ffcccc; padding: 20px;margin: 10px;-fx-text-fill: #006666;");
+		printBtn.setId("ipad-grey");
 		printBtn.setDisable(Boolean.TRUE);
 
 		Button convertBtn = new Button("Convert Now!");
-		convertBtn.setFont(Font.font("Arial Rounded MT Bold", 30));
-		convertBtn.setStyle("-fx-background-color: #ffcccc; padding: 20px;margin: 10px;-fx-text-fill: #006666;");
+		convertBtn.setId("ipad-grey");
 		convertBtn.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
+				nameTxtArea.requestFocus();
 				nameTxtArea.setText(conversionController.getBinaryName(nameTxtArea.getText()));
 				convertBtn.setDisable(Boolean.TRUE);
 				printBtn.setDisable(Boolean.FALSE);
@@ -85,7 +96,7 @@ public class Main extends Application {
 		hBox.getChildren().addAll(convertBtn, printBtn);
 
 		VBox vBox = new VBox(10);
-		vBox.setAlignment(Pos.CENTER);
+		vBox.setAlignment(Pos.TOP_CENTER);
 		vBox.getChildren().addAll(helloLbl, myNameLbl, nameTxtArea, hBox);
 		vBox.setStyle("-fx-background-color: red;margin: 20px;");
 
@@ -93,8 +104,9 @@ public class Main extends Application {
 
 			@Override
 			public void handle(ActionEvent event) {
+				nameTxtArea.requestFocus();
 				// Start printing
-				print(vBox);
+				print(vBox, nameTxtArea.getText());
 				convertBtn.setDisable(Boolean.FALSE);
 				printBtn.setDisable(Boolean.TRUE);
 				nameTxtArea.setText("");
@@ -104,8 +116,6 @@ public class Main extends Application {
 		Scene scene = new Scene(vBox);
 		scene.getStylesheets().add(Main.class.getResource("/style.css").toExternalForm());
 
-		Toolkit tk = Toolkit.getToolkit();
-
 		primaryStage.setScene(scene);
 		primaryStage.initStyle(StageStyle.UNDECORATED);
 		primaryStage.setScene(scene);
@@ -113,27 +123,60 @@ public class Main extends Application {
 		primaryStage.setY(visualBounds.getMinY());
 		primaryStage.setWidth(visualBounds.getWidth());
 		primaryStage.setHeight(visualBounds.getHeight());
-
+		
+		adjustTextAreaLayout(nameTxtArea);
+		
 		primaryStage.show();
-
+		
+		// attach keyboard to first node on scene:
+		Node first = scene.getRoot().getChildrenUnmodifiable().get(0);
+		if (first != null) {
+			FXVK.init(first);
+			FXVK.attach(first);
+			keyboard = getPopupWindow();
+		}
+		
 		nameTxtArea.focusedProperty().addListener((ob, b, b1) -> {
 			if (keyboard == null) {
 				keyboard = getPopupWindow();
-
-				keyboard.yProperty().addListener(obs -> {
-					System.out.println("wi " + keyboard.getY());
-					System.out.println("wi " + nameTxtArea.getHeight());
-					
-					Platform.runLater(() -> {
-						Double y = bounds.getHeight() - taskbarHeight - keyboard.getY();
-//						primaryStage.setY(y > 0 ? -y : 0);
-						nameTxtArea.setPrefRowCount((int)nameTxtArea.getHeight() - (int)keyboard.getY());
-					});
-				});
 			}
+			
+			keyboard.setHideOnEscape(Boolean.FALSE);
+			keyboard.setAutoHide(Boolean.FALSE);
+			keyboard.centerOnScreen();
+			keyboard.requestFocus();
+			
+			keyboard.yProperty().addListener(obs -> {
+				
+				Platform.runLater(() -> {
+					Double y = bounds.getHeight() - taskbarHeight - keyboard.getY();
+					nameTxtArea.setMaxHeight((bounds.getHeight() - y) * 0.4);
+					nameTxtArea.setMinHeight((bounds.getHeight() - y) * 0.4);
+				});
+			});
+			
+			/*keyboard.setOnAutoHide(new EventHandler<Event>() {
+				
+				@Override
+				public void handle(Event event) {
+					System.out.println("I am here");
+				}
+				
+			});
+			
+			keyboard.setOnCloseRequest(new EventHandler<WindowEvent>() {
+				
+				@Override
+				public void handle(WindowEvent event) {
+					System.out.println("I am here");
+				}
+				
+			});*/
 		});
+		
 
-		nameTxtArea.onMouseClickedProperty().addListener((ob, b, b1) -> {
+//						primaryStage.setY(y > 0 ? -y : 0);
+		/*nameTxtArea.onMouseClickedProperty().addListener((ob, b, b1) -> {
 			if (keyboard == null) {
 				keyboard = getPopupWindow();
 
@@ -145,7 +188,33 @@ public class Main extends Application {
 					});
 				});
 			}
-		});
+		});*/
+		
+		/*nameTxtArea.setOnMouseClicked(new EventHandler<MouseEvent>() {
+
+	        @Override
+	        public void handle(MouseEvent event) {
+	        	if (keyboard == null) {
+					keyboard = getPopupWindow();
+
+					keyboard.yProperty().addListener(obs -> {
+						System.out.println("wi " + keyboard.getY());
+						Platform.runLater(() -> {
+							double y = bounds.getHeight() - taskbarHeight - keyboard.getY();
+							primaryStage.setY(y > 0 ? -y : 0);
+						});
+					});
+				}
+	        	
+	        	keyboard.show(primaryStage);
+	        }
+	    });*/
+		
+//		keyboard = getPopupWindow();
+		
+		/*keyboard.onCloseRequestProperty().addListener((ob, b, b1) -> {
+			System.out.println("I am here");
+		});*/
 
 	}
 
@@ -153,10 +222,21 @@ public class Main extends Application {
 		launch(args);
 	}
 
-	private void print(Node node) {
+	private void print(Node node1, String text) {
 		// Create a printer job for the default printer
-		PrinterJob job = PrinterJob.createPrinterJob();
+		
+		Printer printer = Printer.getDefaultPrinter();
+		Paper label = PrintHelper.createPaper("2.5x3.5", 2.5, 3.5, Units.INCH);
+		PageLayout pageLayout = printer.createPageLayout(label, PageOrientation.LANDSCAPE, Printer.MarginType.EQUAL);
 
+		PrinterJob job = PrinterJob.createPrinterJob();
+		
+		Node node = createFullNode(text);
+		
+		double scaleX = pageLayout.getPrintableWidth() / node1.getBoundsInParent().getWidth();
+		double scaleY = pageLayout.getPrintableHeight() / node1.getBoundsInParent().getHeight();
+		node.getTransforms().add(new Scale(scaleX, scaleY));
+		
 		if (job != null) {
 			// Print the node
 			boolean printed = job.printPage(node);
@@ -172,9 +252,11 @@ public class Main extends Application {
 			// Write Error Message
 			System.out.println("Could not create a printer job.");
 		}
+		
+		node.getTransforms().remove(node.getTransforms().size() - 1);
 	}
 
-	private PopupWindow getPopupWindow() {
+	/*private PopupWindow getPopupWindow() {
 
 		@SuppressWarnings("deprecation")
 		final Iterator<Window> windows = Window.impl_getWindows();
@@ -187,6 +269,9 @@ public class Main extends Application {
 					if (root.getChildrenUnmodifiable().size() > 0) {
 						Node popup = root.getChildrenUnmodifiable().get(0);
 						if (popup.lookup(".fxvk") != null) {
+							FXVK vk = (FXVK) popup.lookup(".fxvk");
+                            // hide the key:
+                            vk.lookup(".hide").setVisible(false);
 							return (PopupWindow) window;
 						}
 					}
@@ -195,6 +280,93 @@ public class Main extends Application {
 			}
 		}
 		return null;
-	}
+	}*/
+	
+	private PopupWindow getPopupWindow() {
 
+        @SuppressWarnings("deprecation") 
+        final Iterator<Window> windows = Window.impl_getWindows();
+
+        while (windows.hasNext()) {
+            final Window window = windows.next();
+            if (window instanceof PopupWindow) {
+                if (window.getScene() != null && window.getScene().getRoot() != null) { 
+                    Parent root = window.getScene().getRoot();
+                    if (root.getChildrenUnmodifiable().size() > 0) {
+                        Node popup = root.getChildrenUnmodifiable().get(0);
+                        if (popup.lookup(".fxvk") != null) {
+                            FXVK vk = (FXVK) popup.lookup(".fxvk");
+                            // hide the key:
+                            vk.lookup(".hide").setVisible(false);
+                            return (PopupWindow) window;
+                        }
+                    }
+                }
+                return null;
+            }
+        }
+        return null;
+    }
+	
+	private Node createFullNode(String text) {
+		
+		Label helloLbl = new Label("Hello");
+		helloLbl.setAlignment(Pos.CENTER);
+		helloLbl.setFont(Font.font("Comic Sans MS", FontWeight.BOLD, 68));
+		helloLbl.setStyle("-fx-background-color: red;padding: 20px;");
+		helloLbl.setTextFill(Color.web("#ffffff"));
+
+		Label myNameLbl = new Label("my name is");
+		myNameLbl.setAlignment(Pos.CENTER);
+		myNameLbl.setFont(Font.font("Comic Sans MS", 48));
+		myNameLbl.setStyle("-fx-background-color: red;padding: 20px;");
+		myNameLbl.setTextFill(Color.web("#ffffff"));
+
+		TextArea nameTxtArea = new TextArea();
+		nameTxtArea.setWrapText(Boolean.TRUE);
+		nameTxtArea.setFont(Font.font("Comic Sans MS", 28));
+		nameTxtArea.setStyle("padding: 20px;");
+		nameTxtArea.setText(text);
+		nameTxtArea.getStyleClass().add("center-text-area");
+
+		HBox hBox = new HBox(1000);
+		hBox.setAlignment(Pos.CENTER);
+
+		VBox vBox = new VBox(10);
+		vBox.setAlignment(Pos.CENTER);
+		vBox.getChildren().addAll(helloLbl, myNameLbl, nameTxtArea, hBox);
+		vBox.setStyle("-fx-background-color: red;margin: 20px;");
+		
+		vBox.getStylesheets().add(Main.class.getResource("/style.css").toExternalForm());
+		
+		return vBox;
+	}
+	
+	private void adjustTextAreaLayout(TextArea textArea) {
+        textArea.applyCss();
+        textArea.layout();
+
+        ScrollPane textAreaScroller = (ScrollPane) textArea.lookup(".scroll-pane");
+        Text text = (Text) textArea.lookup(".text");
+
+
+        ChangeListener<? super Bounds> listener = 
+                (obs, oldBounds, newBounds) -> centerTextIfNecessary(textAreaScroller, text);
+        textAreaScroller.viewportBoundsProperty().addListener(listener);
+        text.boundsInLocalProperty().addListener(listener);
+
+    }
+
+    private void centerTextIfNecessary(ScrollPane textAreaScroller, Text text) {
+        double textHeight = text.getBoundsInLocal().getHeight();
+        double viewportHeight = textAreaScroller.getViewportBounds().getHeight();
+        double offset = Math.max(0, (viewportHeight - textHeight) / 2 );
+        text.setTranslateY(offset);
+        Parent content = (Parent)textAreaScroller.getContent();
+        for (Node n : content.getChildrenUnmodifiable()) {
+            if (n instanceof Path) { // caret
+                n.setTranslateY(offset);
+            }
+        }
+    }
 }
