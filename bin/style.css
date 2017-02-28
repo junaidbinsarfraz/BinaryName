@@ -16,7 +16,7 @@
     -fx-font-weight: bold;
     -fx-text-fill: #333333;
     -fx-effect: dropshadow( three-pass-box , rgba(255,255,255,0.2) , 1, 0.0 , 0 , 1);
-    margin: 10px;
+    margin: 100px;
     -fx-pref-width: 300px;
 }
 #ipad-grey Text {
